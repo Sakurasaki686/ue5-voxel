@@ -2,6 +2,8 @@
 
 FastNoiseLite FVoxelGenerator::Noise = FastNoiseLite();
 
+const float GVoxelSize = 100.0f;
+
 void FVoxelGenerator::Sculpt(FVoxel* Data, const int Size, UVoxelBrush* VoxelBrush)
 {
 	for(int x = 0; x < Size; x++)
@@ -57,4 +59,13 @@ FVoxel FVoxelGenerator::GetVoxel(const FVector Position)
 	VoxelData.Density = Position.Z - Height;
 	if(Position.Z < -8) VoxelData.Id = 1;
 	return VoxelData;
+}
+
+void FVoxelGenerator::Clear(FVoxel* Data, int Size)
+{
+	for(int i = 0; i < Size * Size * Size; ++i)
+	{
+		Data[i].Density = 1.0f; 
+		Data[i].Id = 0;
+	}
 }

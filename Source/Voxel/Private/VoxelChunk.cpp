@@ -23,8 +23,10 @@ void UVoxelChunk::BeginPlay()
 	MeshComponent->SetGenerateOverlapEvents(true);
 	MeshComponent->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
 	Data = new FVoxel[Size * Size * Size];
-	Generate();
-	Update();
+
+	FVoxelGenerator::Clear(Data, Size);
+	// Generate();
+	// Update();
 }
 
 void UVoxelChunk::BeginDestroy()
