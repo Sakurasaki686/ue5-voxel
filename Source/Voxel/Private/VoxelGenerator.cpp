@@ -2,8 +2,6 @@
 
 FastNoiseLite FVoxelGenerator::Noise = FastNoiseLite();
 
-const float GVoxelSize = 100.0f;
-
 void FVoxelGenerator::Sculpt(FVoxel* Data, const int Size, UVoxelBrush* VoxelBrush)
 {
 	for(int x = 0; x < Size; x++)
