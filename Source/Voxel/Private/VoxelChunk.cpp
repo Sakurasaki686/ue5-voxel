@@ -15,6 +15,7 @@ void UVoxelChunk::BeginPlay()
 {
 	Super::BeginPlay();
 	MeshComponent = NewObject<UDynamicMeshComponent>(GetOwner());
+	MeshComponent->SetupAttachment(GetOwner()->GetRootComponent());
 	MeshComponent->RegisterComponent();
 	MeshComponent->SetMaterial(0, Material);
 	MeshComponent->SetComplexAsSimpleCollisionEnabled(true, true);
@@ -50,7 +51,26 @@ void UVoxelChunk::SetSize(int NewSize)
 
 void UVoxelChunk::Sculpt(UVoxelBrush* VoxelBrush)
 {
-	FVoxelGenerator::Sculpt(Data, Size, VoxelBrush);
+	// FVoxelGenerator::Sculpt(Data, Size, VoxelBrush);
+	// FVoxelGenerator::Sculpt(Data, Size, VoxelBrush, GetOwner()->GetActorLocation());
+	
+	// 1. 获取笔刷的世界坐标（以米为单位，根据你之前的描述）
+	const FVector BrushWorldLocation = VoxelBrush->Location;
+
+	// 2. 获取Chunk的世界原点坐标（也转换为米）
+	const FVector ChunkWorldOrigin = GetOwner()->GetActorLocation() / 100.0f;
+
+	// 3. 将笔刷的世界坐标，转换成这个Chunk的【局部】体素坐标
+	const FVector BrushLocalLocation = BrushWorldLocation - ChunkWorldOrigin;
+
+	// 4. 创建一个新的临时笔刷，或者直接修改传入笔刷的副本，使用【局部坐标】
+	UVoxelBrush* LocalSpaceBrush = NewObject<UVoxelBrush>(); // 创建副本更安全
+	LocalSpaceBrush->Shape = VoxelBrush->Shape;
+	LocalSpaceBrush->Strength = VoxelBrush->Strength;
+	LocalSpaceBrush->Location = BrushLocalLocation; // <-- 使用局部坐标
+
+	// 5. 将这个使用【局部坐标】的笔刷传递给只懂【局部坐标】的生成器
+	FVoxelGenerator::Sculpt(Data, Size, LocalSpaceBrush);
 }
 
 void UVoxelChunk::Paint(UVoxelBrush* VoxelBrush, int MaterialId)
@@ -83,6 +103,8 @@ void UVoxelChunk::Update() const
 	Mesh->Attributes()->EnablePrimaryColors();
 	const auto ColorOverlay = Mesh->Attributes()->PrimaryColors();
 
+	const FVector ChunkWorldOrigin = GetOwner()->GetActorLocation();
+
 	for (int i = 0; i < MeshData.Vertices.Num(); i++)
 	{
 		int Id = Mesh->AppendVertex(MeshData.Vertices[i]);
@@ -105,4 +127,68 @@ void UVoxelChunk::Update() const
 	MeshComponent->UpdateCollision(false);
 
 	StatsRef.UpdateTime = (FPlatformTime::Seconds() - StartTime) * 1000;
+}
+
+void UVoxelChunk::GodFinger_DigHoleAtCenter()
+{
+	// ===================================================================
+	// 阶段一：用最直接的方式修改数据
+	// ===================================================================
+	
+	// 1. 计算出数据数组最中心的索引。这里只使用纯粹的局部索引。
+	const int CenterX = Size / 2;
+	const int CenterY = Size / 2;
+	const int CenterZ = Size / 2;
+
+	// 这是作者在FMCMeshBuilder里使用的GetIndex的C++等价实现。
+	// 确保我们使用的索引计算方式和构建器是一致的。
+	const int CenterIndex = (CenterZ * Size * Size) + (CenterY * Size) + CenterX;
+	
+	// 2. 一个绝对必要的安全检查
+	if (CenterIndex < 0 || CenterIndex >= (Size * Size * Size))
+	{
+		UE_LOG(LogTemp, Error, TEXT("!!!!!!!! GodFinger FAILED: Index %d is OUT OF BOUNDS for Size %d !!!!!"), CenterIndex, Size);
+		return;
+	}
+	
+	// 3. 直接、粗暴地修改这个中心点的数据。
+	//    将密度从默认的 1.0 (实心) 改为 -1.0 (空心)。
+	//    这个巨大的密度差，Marching Cubes算法不可能看不见。
+	Data[CenterIndex].Density = -1.0f;
+
+	// ===================================================================
+	// 阶段二：用最详细的日志轰炸来确认我们的状态
+	// ===================================================================
+
+	// 打印这个Chunk所属Actor的信息
+	AActor* MyOwner = GetOwner();
+	if (!MyOwner)
+	{
+		UE_LOG(LogTemp, Error, TEXT("!!!!!!!! GodFinger FAILED: This Chunk has NO OWNER !!!!!"));
+		return;
+	}
+
+	// 打印这个MeshComponent的信息
+	if (!MeshComponent)
+	{
+		UE_LOG(LogTemp, Error, TEXT("!!!!!!!! GodFinger FAILED: MeshComponent is NULL !!!!!"));
+		return;
+	}
+
+	// 获取并打印出所有重要的变换信息
+	FVector ChunkLocation = MyOwner->GetActorLocation();
+	FTransform MeshComponentWorldTransform = MeshComponent->GetComponentTransform();
+	bool bIsAttached = MeshComponent->GetAttachParent() != nullptr;
+
+	UE_LOG(LogTemp, Warning, TEXT("================ GOD FINGER REPORT ================"));
+	UE_LOG(LogTemp, Warning, TEXT(">> Actor Location: %s"), *ChunkLocation.ToString());
+	UE_LOG(LogTemp, Warning, TEXT(">> MeshComponent is Attached: %s"), bIsAttached ? TEXT("TRUE") : TEXT("FALSE"));
+	UE_LOG(LogTemp, Warning, TEXT(">> MeshComponent World Location: %s"), *MeshComponentWorldTransform.GetLocation().ToString());
+	UE_LOG(LogTemp, Warning, TEXT(">> Modified Data at LOCAL index (%d, %d, %d)"), CenterX, CenterY, CenterZ);
+	UE_LOG(LogTemp, Warning, TEXT("==================================================="));
+
+	// ===================================================================
+	// 阶段三：强制更新
+	// ===================================================================
+	Update();
 }

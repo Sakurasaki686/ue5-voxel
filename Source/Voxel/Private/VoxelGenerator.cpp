@@ -12,6 +12,7 @@ void FVoxelGenerator::Sculpt(FVoxel* Data, const int Size, UVoxelBrush* VoxelBru
 			{
 				const int Index = x + Size * (y + Size * z);
 				FVector Position = FVector(x, y, z);
+				// FVector Location = VoxelWorldLocation / 100.f + Position;
 				VoxelBrush->Sculpt(Data[Index], Position);
 			}
 		}
