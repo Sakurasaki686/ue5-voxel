@@ -54,22 +54,15 @@ void UVoxelChunk::Sculpt(UVoxelBrush* VoxelBrush)
 	// FVoxelGenerator::Sculpt(Data, Size, VoxelBrush);
 	// FVoxelGenerator::Sculpt(Data, Size, VoxelBrush, GetOwner()->GetActorLocation());
 	
-	// 1. 获取笔刷的世界坐标（以米为单位，根据你之前的描述）
 	const FVector BrushWorldLocation = VoxelBrush->Location;
-
-	// 2. 获取Chunk的世界原点坐标（也转换为米）
 	const FVector ChunkWorldOrigin = GetOwner()->GetActorLocation() / 100.0f;
-
-	// 3. 将笔刷的世界坐标，转换成这个Chunk的【局部】体素坐标
 	const FVector BrushLocalLocation = BrushWorldLocation - ChunkWorldOrigin;
 
-	// 4. 创建一个新的临时笔刷，或者直接修改传入笔刷的副本，使用【局部坐标】
-	UVoxelBrush* LocalSpaceBrush = NewObject<UVoxelBrush>(); // 创建副本更安全
+	UVoxelBrush* LocalSpaceBrush = NewObject<UVoxelBrush>();
 	LocalSpaceBrush->Shape = VoxelBrush->Shape;
 	LocalSpaceBrush->Strength = VoxelBrush->Strength;
-	LocalSpaceBrush->Location = BrushLocalLocation; // <-- 使用局部坐标
+	LocalSpaceBrush->Location = BrushLocalLocation;
 
-	// 5. 将这个使用【局部坐标】的笔刷传递给只懂【局部坐标】的生成器
 	FVoxelGenerator::Sculpt(Data, Size, LocalSpaceBrush);
 }
 
