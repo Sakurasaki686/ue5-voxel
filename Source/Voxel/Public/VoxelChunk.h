@@ -20,7 +20,7 @@ public:
 	FVoxelStats& StatsRef = Stats;
 	FVoxel* Data;
 	UPROPERTY(BlueprintReadWrite)
-	int Size = 64;
+	int Size = 65;
 	
 	UPROPERTY(BlueprintReadWrite)
 	UDynamicMeshComponent* MeshComponent;
