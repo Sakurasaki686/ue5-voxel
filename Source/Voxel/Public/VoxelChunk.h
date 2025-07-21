@@ -48,4 +48,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void GodFinger_DigHoleAtCenter();
+
+private:
+	
 };

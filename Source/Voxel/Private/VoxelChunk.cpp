@@ -83,7 +83,7 @@ void UVoxelChunk::Update() const
 {
 	const double StartTime = FPlatformTime::Seconds();
 	FMCMeshBuilder MeshBuilder;
-	const FMCMesh MeshData = MeshBuilder.Build(Data, Size - 1);
+	const FMCMesh MeshData = MeshBuilder.Build(Data, Size);
 	StatsRef.VertexCount = MeshData.Vertices.Num();
 	StatsRef.TriangleCount = MeshData.Triangles.Num();
 

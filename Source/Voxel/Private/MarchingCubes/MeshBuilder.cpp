@@ -4,59 +4,135 @@
 #include "MarchingCubes/MeshData.h"
 #include "MarchingCubes/VoxelMaterial.h"
 
+// FMCMesh FMCMeshBuilder::Build(FVoxel* Data, int Size)
+// {
+// 	FMCMesh Mesh;
+// 	TArray<FVector> NewTriangles;
+//
+// 	const float VoxelSize = 100.0;
+// 	const int DataOffset = 0;
+// 	const int DataPadding = 1;
+// 	const int Steps = 1;
+// 	
+// 	for (int z = 0; z < Size; z += Steps) {
+// 		for (int y = 0; y < Size; y += Steps) {
+// 			for (int x = 0; x < Size; x += Steps) {
+// 				W[0] = Data[GetIndex(DataOffset+x,		DataOffset+y,		DataOffset+z,		Size + DataPadding)].Density;
+// 				W[1] = Data[GetIndex(DataOffset+x,		DataOffset+y,		DataOffset+z + Steps,	Size + DataPadding)].Density;
+// 				W[2] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y,		DataOffset+z + Steps,	Size + DataPadding)].Density;
+// 				W[3] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y,		DataOffset+z,		Size + DataPadding)].Density;
+// 				W[4] = Data[GetIndex(DataOffset+x,		DataOffset+y + Steps,DataOffset+	z,		Size + DataPadding)].Density;
+// 				W[5] = Data[GetIndex(DataOffset+x,		DataOffset+y + Steps,DataOffset+	z + Steps,	Size + DataPadding)].Density;
+// 				W[6] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y + Steps,	DataOffset+z + Steps,	Size + DataPadding)].Density;
+// 				W[7] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y + Steps,	DataOffset+z,		Size + DataPadding)].Density;
+//
+// 				SetVectors(Pos, x / Steps, y / Steps, z / Steps);
+// 				MarchingCubes.InsertTrianglesOfCube(Pos, W, NewTriangles);
+// 			}
+// 		}
+// 	}
+//
+// 	for (int i = 0; i < NewTriangles.Num(); i += 3) AddTriangle(NewTriangles[i], NewTriangles[i + 1], NewTriangles[i + 2]);
+//
+// 	for (int i = 0; i < IndexToVertex.Num(); i++) {
+// 		const FVector* v = IndexToVertex.Find(i);
+//
+// 		// Voxel Index
+// 		const int x = DataOffset + FMath::RoundToInt(v->X * Steps), y = DataOffset + FMath::RoundToInt(v->Y * Steps), z = DataOffset + FMath::RoundToInt(v->Z * Steps);
+//
+// 		// Material
+// 		const FVoxel Voxel = Data[GetIndex(x, y, z, Size + DataPadding)];
+// 		Mesh.Colors.Add(UVoxelMaterial::Encode(Voxel.Id));
+//
+// 		// Normal
+// 		FVector Grad;
+// 		Grad.X = Data[GetIndex(x - 1, y, z, Size + DataPadding)].Density - Data[GetIndex(x + 1, y, z, Size + DataPadding)].Density;
+// 		Grad.Y = Data[GetIndex(x, y - 1, z, Size + DataPadding)].Density - Data[GetIndex(x, y + 1, z, Size + DataPadding)].Density;
+// 		Grad.Z = Data[GetIndex(x, y, z - 1, Size + DataPadding)].Density - Data[GetIndex(x, y, z + 1, Size + DataPadding)].Density;
+// 		Grad.Normalize();
+// 		Mesh.Normals.Add(-Grad);
+// 		
+// 		// Vertex
+// 		Mesh.Vertices.Add(FVector(v->X * VoxelSize, v->Y * VoxelSize, v->Z * VoxelSize));
+// 	}
+// 	
+// 	for (int i = 0; i < Triangles.Num(); i++) Mesh.Triangles.Add(Triangles[i]);
+//
+// 	return Mesh;
+// }
+
 FMCMesh FMCMeshBuilder::Build(FVoxel* Data, int Size)
 {
 	FMCMesh Mesh;
 	TArray<FVector> NewTriangles;
 
-	const float VoxelSize = 100.0;
-	const int DataOffset = 0;
-	const int DataPadding = 1;
-	const int Steps = 1;
-	
-	for (int z = 0; z < Size; z += Steps) {
-		for (int y = 0; y < Size; y += Steps) {
-			for (int x = 0; x < Size; x += Steps) {
-				W[0] = Data[GetIndex(DataOffset+x,		DataOffset+y,		DataOffset+z,		Size + DataPadding)].Density;
-				W[1] = Data[GetIndex(DataOffset+x,		DataOffset+y,		DataOffset+z + Steps,	Size + DataPadding)].Density;
-				W[2] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y,		DataOffset+z + Steps,	Size + DataPadding)].Density;
-				W[3] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y,		DataOffset+z,		Size + DataPadding)].Density;
-				W[4] = Data[GetIndex(DataOffset+x,		DataOffset+y + Steps,DataOffset+	z,		Size + DataPadding)].Density;
-				W[5] = Data[GetIndex(DataOffset+x,		DataOffset+y + Steps,DataOffset+	z + Steps,	Size + DataPadding)].Density;
-				W[6] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y + Steps,	DataOffset+z + Steps,	Size + DataPadding)].Density;
-				W[7] = Data[GetIndex(DataOffset+x + Steps,	DataOffset+y + Steps,	DataOffset+z,		Size + DataPadding)].Density;
+	// 重置内部状态
+	IndexToVertex.Empty();
+	IndexToNormal.Empty();
+	VertexToIndex.Empty();
+	Triangles.Empty();
 
-				SetVectors(Pos, x / Steps, y / Steps, z / Steps);
+	const float VoxelSize = 100.0;
+
+	for (int z = 0; z < Size - 1; z++) 
+	{
+		for (int y = 0; y < Size - 1; y++) 
+		{
+			for (int x = 0; x < Size - 1; x++) 
+			{
+				W[0] = Data[GetIndex(x,     y,     z,     Size)].Density;
+				W[1] = Data[GetIndex(x,     y,     z + 1, Size)].Density;
+				W[2] = Data[GetIndex(x + 1, y,     z + 1, Size)].Density;
+				W[3] = Data[GetIndex(x + 1, y,     z,     Size)].Density;
+				W[4] = Data[GetIndex(x,     y + 1, z,     Size)].Density;
+				W[5] = Data[GetIndex(x,     y + 1, z + 1, Size)].Density;
+				W[6] = Data[GetIndex(x + 1, y + 1, z + 1, Size)].Density;
+				W[7] = Data[GetIndex(x + 1, y + 1, z,     Size)].Density;
+
+				SetVectors(Pos, x, y, z);
 				MarchingCubes.InsertTrianglesOfCube(Pos, W, NewTriangles);
 			}
 		}
 	}
 
-	for (int i = 0; i < NewTriangles.Num(); i += 3) AddTriangle(NewTriangles[i], NewTriangles[i + 1], NewTriangles[i + 2]);
+	for (int i = 0; i < NewTriangles.Num(); i += 3)
+	{
+		AddTriangle(NewTriangles[i], NewTriangles[i + 1], NewTriangles[i + 2]);
+	}
 
-	for (int i = 0; i < IndexToVertex.Num(); i++) {
+	for (int i = 0; i < IndexToVertex.Num(); i++)
+	{
 		const FVector* v = IndexToVertex.Find(i);
 
-		// Voxel Index
-		const int x = DataOffset + FMath::RoundToInt(v->X * Steps), y = DataOffset + FMath::RoundToInt(v->Y * Steps), z = DataOffset + FMath::RoundToInt(v->Z * Steps);
+		const int x_idx = FMath::Clamp(FMath::RoundToInt(v->X), 0, Size - 1);
+		const int y_idx = FMath::Clamp(FMath::RoundToInt(v->Y), 0, Size - 1);
+		const int z_idx = FMath::Clamp(FMath::RoundToInt(v->Z), 0, Size - 1);
 
 		// Material
-		const FVoxel Voxel = Data[GetIndex(x, y, z, Size + DataPadding)];
+		const FVoxel Voxel = Data[GetIndex(x_idx, y_idx, z_idx, Size)];
 		Mesh.Colors.Add(UVoxelMaterial::Encode(Voxel.Id));
 
-		// Normal
+		const int x_minus = FMath::Max(0, x_idx - 1);
+		const int x_plus = FMath::Min(Size - 1, x_idx + 1);
+		const int y_minus = FMath::Max(0, y_idx - 1);
+		const int y_plus = FMath::Min(Size - 1, y_idx + 1);
+		const int z_minus = FMath::Max(0, z_idx - 1);
+		const int z_plus = FMath::Min(Size - 1, z_idx + 1);
+		
 		FVector Grad;
-		Grad.X = Data[GetIndex(x - 1, y, z, Size + DataPadding)].Density - Data[GetIndex(x + 1, y, z, Size + DataPadding)].Density;
-		Grad.Y = Data[GetIndex(x, y - 1, z, Size + DataPadding)].Density - Data[GetIndex(x, y + 1, z, Size + DataPadding)].Density;
-		Grad.Z = Data[GetIndex(x, y, z - 1, Size + DataPadding)].Density - Data[GetIndex(x, y, z + 1, Size + DataPadding)].Density;
-		Grad.Normalize();
-		Mesh.Normals.Add(-Grad);
+		Grad.X = Data[GetIndex(x_minus, y_idx, z_idx, Size)].Density - Data[GetIndex(x_plus, y_idx, z_idx, Size)].Density;
+		Grad.Y = Data[GetIndex(x_idx, y_minus, z_idx, Size)].Density - Data[GetIndex(x_idx, y_plus, z_idx, Size)].Density;
+		Grad.Z = Data[GetIndex(x_idx, z_idx, z_minus, Size)].Density - Data[GetIndex(x_idx, z_idx, z_plus, Size)].Density;
+		Mesh.Normals.Add(-Grad.GetSafeNormal());
 		
 		// Vertex
 		Mesh.Vertices.Add(FVector(v->X * VoxelSize, v->Y * VoxelSize, v->Z * VoxelSize));
 	}
 	
-	for (int i = 0; i < Triangles.Num(); i++) Mesh.Triangles.Add(Triangles[i]);
+	for (int i = 0; i < Triangles.Num(); i++)
+	{
+		Mesh.Triangles.Add(Triangles[i]);
+	}
 
 	return Mesh;
 }
