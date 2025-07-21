@@ -22,9 +22,15 @@ public:
 	UVoxelChunk* GetOrCreateChunkByID(const FIntVector& ChunkID);
 
 	UFUNCTION(BlueprintPure, Category = "Voxel")
-	FIntVector WorldLocationToChunkID(const FVector& WorldLocation) const;
+	FIntVector WorldLocationToChunkID(FVector WorldLocation) const;
+
+	UFUNCTION(BlueprintCallable, Category = "Voxel", meta = (DisplayName = "Sculpt In World (Symmetrical)"))
+	void SculptInWorld_Symmetrical(UVoxelChunk* TargetChunk, UVoxelBrush* WorldSpaceBrush);
 	
 protected:
 	UPROPERTY()
 	TMap<FIntVector, UVoxelChunk*> Chunks;
+
+private:
+	float GetBrushRadius(UVoxelBrush* Brush) const;
 };
