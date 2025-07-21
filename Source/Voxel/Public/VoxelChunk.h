@@ -45,10 +45,4 @@ public:
 	void Generate() const;
 	UFUNCTION(BlueprintCallable)
 	void Update() const;
-
-	UFUNCTION(BlueprintCallable)
-	void GodFinger_DigHoleAtCenter();
-
-private:
-	
 };
